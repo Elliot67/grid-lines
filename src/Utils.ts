@@ -8,17 +8,13 @@ export default class Utils {
 
 		const throttledEventHandler = (event: MouseEvent) => {
 			storedEvent = event;
-
 			const shouldHandleEvent = !throttleTimeout;
 
 			if (shouldHandleEvent) {
 				callback(storedEvent);
-
 				storedEvent = null;
-
 				throttleTimeout = window.setTimeout(() => {
 					throttleTimeout = null;
-
 					if (storedEvent) {
 						throttledEventHandler(storedEvent);
 					}

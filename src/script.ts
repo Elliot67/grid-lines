@@ -23,7 +23,12 @@ enum Direction {
 }
 
 interface Line {
-	pos: Position;
+	config: LineConfig;
+	frontPoint: Position;
+	points: Position[];
+}
+
+interface LineConfig {
 	currentDirection: Direction;
 	initialDirection: Direction;
 	color: string;
@@ -45,7 +50,7 @@ class Canvas {
 	private numRows: number;
 	private config: Config;
 
-	private lines: Line[] = [];
+	public lines: Line[] = [];
 
 	constructor(canvas: HTMLCanvasElement, Config: Config) {
 		this.config = Config;
@@ -55,38 +60,38 @@ class Canvas {
 
 		window.requestAnimationFrame(this.draw.bind(this));
 
-		this.lines.push({
-			pos: { x: 50, y: 250 },
-			currentDirection: Direction.RIGHT,
-			initialDirection: Direction.RIGHT,
-			color: "red",
-		});
-
-		const registeredCallback = Utils.throttle(this.createLines.bind(this), 20);
+		const registeredCallback = Utils.throttle(this.createLines.bind(this), 400);
 		canvas.addEventListener("mousemove", registeredCallback);
 	}
 
 	private createLines(event: MouseEvent) {
 		const direction = this.pickDirection();
+		const initialPos = this.findClosestPoint(event);
+
 		this.lines.push({
-			pos: this.findClosestPoint(event),
-			color: this.config.linesColor[
-				Math.floor(Math.random() * this.config.linesColor.length)
-			],
-			currentDirection: direction,
-			initialDirection: direction,
+			config: {
+				color: this.pickColor(),
+				currentDirection: direction,
+				initialDirection: direction,
+			},
+			frontPoint: initialPos,
+			points: [initialPos],
 		});
 	}
 
-	private pickDirection(
-		availablesDirections: Direction[] = [
+	private pickDirection(notAvailablesDirections: Direction[] = []): Direction {
+		const availablesDirections = new Set([
 			Direction.DOWN,
 			Direction.LEFT,
 			Direction.RIGHT,
 			Direction.UP,
-		]
-	): Direction {
-		return Direction.UP;
+		]);
+		notAvailablesDirections.forEach((direction) => availablesDirections.delete(direction));
+		return Array.from(availablesDirections)[Math.floor(Math.random() * availablesDirections.size)];
+	}
+
+	private pickColor(): string {
+		return this.config.linesColor[Math.floor(Math.random() * this.config.linesColor.length)];
 	}
 
 	private findClosestPoint(event: MouseEvent): Position {
@@ -127,19 +132,88 @@ class Canvas {
 		this.ctx.stroke();
 	}
 
+	private isPointOnCross(pos: Position): boolean {
+		const isXCrossing = Number.isInteger(pos.x / this.squareSize);
+		const isYCrossing = Number.isInteger(pos.y / this.squareSize);
+		return isXCrossing && isYCrossing;
+	}
+
+	private updateNormalPosition(point: Position, direction: Direction): void {
+		switch (direction) {
+			case Direction.DOWN:
+				point.y += this.config.speed;
+				break;
+			case Direction.UP:
+				point.y -= this.config.speed;
+				break;
+			case Direction.RIGHT:
+				point.x += this.config.speed;
+				break;
+			case Direction.LEFT:
+				point.x -= this.config.speed;
+				break;
+		}
+	}
+
+	private updateLine(line: Line): Line {
+
+		if (this.isPointOnCross(line.frontPoint)) {
+			line.points.unshift(line.frontPoint); // FIXME: something here
+			line.config.currentDirection = this.pickDirection([line.config.initialDirection]);
+		}
+		this.updateNormalPosition(line.frontPoint, line.config.currentDirection);
+
+		let currentLineLength = 0;
+		for (const [index, point] of line.points.entries()) {
+			const previousPoint = index === 0 ? line.frontPoint : line.points[index];
+
+			const addedLength = Math.abs(
+				point.x === previousPoint.x ? previousPoint.y - point.y : previousPoint.x - point.x
+			);
+
+			if (currentLineLength + addedLength > this.config.lineLength) {
+				line.points = line.points.slice(0, index);
+
+				const remainingLength = this.config.lineLength - currentLineLength;
+
+				const nextX =
+					previousPoint.x === point.x
+						? point.x +
+						  (point.y > previousPoint.y ? remainingLength : remainingLength * -1)
+						: point.x;
+				const nextY =
+					previousPoint.y === point.y
+						? point.y +
+						  (point.x > previousPoint.x ? remainingLength : remainingLength * -1)
+						: point.y;
+
+				line.points.unshift({ x: nextX, y: nextY });
+				break;
+			}
+
+			currentLineLength += addedLength;
+		}
+
+		return line;
+	}
+
 	private drawLines() {
 		this.lines.forEach((line) => {
+			this.updateLine(line);
+
 			this.ctx.beginPath();
-			this.ctx.moveTo(line.pos.x, line.pos.y);
-			this.ctx.lineTo(
-				line.pos.x + this.config.lineLength,
-				line.pos.y + this.config.lineLength
-			);
-			this.ctx.strokeStyle = line.color;
+			this.ctx.moveTo(line.frontPoint.x, line.frontPoint.y);
+
+			line.points.forEach((pos) => {
+				this.ctx.lineTo(pos.x, pos.y);
+			});
+
+			// for debug
+			this.ctx.lineTo(200, 200);
+
+			this.ctx.strokeStyle = line.config.color;
 			this.ctx.lineWidth = 2;
 			this.ctx.stroke();
-
-			line.pos.x += this.config.speed;
 		});
 	}
 
@@ -158,10 +232,20 @@ class Canvas {
 /* :) */
 
 const canvas = document.querySelector("canvas");
-new Canvas(canvas, {
+const gridLines = new Canvas(canvas, {
 	backgroundColor: "#3c3c3c",
 	gridColor: "blue",
 	linesColor: ["green", "purple", "pink"],
-	speed: 5,
-	lineLength: 20,
+	speed: 1,
+	lineLength: 40,
 });
+
+
+window.setInterval(() => {
+	console.log(gridLines.lines);
+}, 5000);
+
+// FIXME:
+// - fix points always the same
+// - remove line when they are out of the canvas
+// - when choosing direction, block two instead of single direction (to avoid repeting direction)
