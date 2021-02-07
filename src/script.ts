@@ -39,7 +39,7 @@ interface Position {
 	y: number;
 }
 
-class Canvas {
+class GridLines {
 	private canvas: HTMLCanvasElement;
 	private ctx: CanvasRenderingContext2D;
 	private height: number;
@@ -61,11 +61,17 @@ class Canvas {
 		window.requestAnimationFrame(this.draw.bind(this));
 
 		const registeredCallback = Utils.throttle(this.createLines.bind(this), 400);
-		canvas.addEventListener("mousemove", registeredCallback);
+		//canvas.addEventListener("mousemove", registeredCallback);
+
+		// @ts-ignore FIXME: for test
+		registeredCallback({
+			offsetX: 500,
+			offsetY: 500,
+		});
 	}
 
 	private createLines(event: MouseEvent) {
-		const direction = this.pickDirection();
+		const direction = this.pickDirection(); // initial direction will be recomputed on first exec
 		const initialPos = this.findClosestPoint(event);
 
 		this.lines.push({
@@ -75,17 +81,12 @@ class Canvas {
 				initialDirection: direction,
 			},
 			frontPoint: initialPos,
-			points: [initialPos],
+			points: [],
 		});
 	}
 
 	private pickDirection(notAvailablesDirections: Direction[] = []): Direction {
-		const availablesDirections = new Set([
-			Direction.DOWN,
-			Direction.LEFT,
-			Direction.RIGHT,
-			Direction.UP,
-		]);
+		const availablesDirections = new Set([Direction.DOWN, Direction.LEFT, Direction.RIGHT, Direction.UP]);
 		notAvailablesDirections.forEach((direction) => availablesDirections.delete(direction));
 		return Array.from(availablesDirections)[Math.floor(Math.random() * availablesDirections.size)];
 	}
@@ -138,7 +139,7 @@ class Canvas {
 		return isXCrossing && isYCrossing;
 	}
 
-	private updateNormalPosition(point: Position, direction: Direction): void {
+	private updateFrontPosition(point: Position, direction: Direction): void {
 		switch (direction) {
 			case Direction.DOWN:
 				point.y += this.config.speed;
@@ -156,16 +157,20 @@ class Canvas {
 	}
 
 	private updateLine(line: Line): Line {
+		console.log(this.isPointOnCross(line.frontPoint));
 
 		if (this.isPointOnCross(line.frontPoint)) {
-			line.points.unshift(line.frontPoint); // FIXME: something here
+			line.points.unshift({ ...line.frontPoint });
 			line.config.currentDirection = this.pickDirection([line.config.initialDirection]);
 		}
-		this.updateNormalPosition(line.frontPoint, line.config.currentDirection);
+		this.updateFrontPosition(line.frontPoint, line.config.currentDirection);
 
 		let currentLineLength = 0;
-		for (const [index, point] of line.points.entries()) {
-			const previousPoint = index === 0 ? line.frontPoint : line.points[index];
+		for (const key in line.points) {
+			const index = parseInt(key);
+			const point = line.points[index];
+
+			const previousPoint = index === 0 ? line.frontPoint : line.points[index - 1];
 
 			const addedLength = Math.abs(
 				point.x === previousPoint.x ? previousPoint.y - point.y : previousPoint.x - point.x
@@ -176,16 +181,13 @@ class Canvas {
 
 				const remainingLength = this.config.lineLength - currentLineLength;
 
-				const nextX =
-					previousPoint.x === point.x
-						? point.x +
-						  (point.y > previousPoint.y ? remainingLength : remainingLength * -1)
-						: point.x;
-				const nextY =
-					previousPoint.y === point.y
-						? point.y +
-						  (point.x > previousPoint.x ? remainingLength : remainingLength * -1)
-						: point.y;
+				let nextX = previousPoint.x;
+				let nextY = previousPoint.y;
+				if (previousPoint.x === point.x) {
+					nextY += point.y > previousPoint.y ? remainingLength : remainingLength * -1;
+				} else if (previousPoint.y === point.y) {
+					nextX += point.x > previousPoint.x ? remainingLength : remainingLength * -1;
+				}
 
 				line.points.unshift({ x: nextX, y: nextY });
 				break;
@@ -208,11 +210,8 @@ class Canvas {
 				this.ctx.lineTo(pos.x, pos.y);
 			});
 
-			// for debug
-			this.ctx.lineTo(200, 200);
-
 			this.ctx.strokeStyle = line.config.color;
-			this.ctx.lineWidth = 2;
+			this.ctx.lineWidth = 3;
 			this.ctx.stroke();
 		});
 	}
@@ -232,18 +231,13 @@ class Canvas {
 /* :) */
 
 const canvas = document.querySelector("canvas");
-const gridLines = new Canvas(canvas, {
+new GridLines(canvas, {
 	backgroundColor: "#3c3c3c",
 	gridColor: "blue",
-	linesColor: ["green", "purple", "pink"],
+	linesColor: ["red", "red", "red"],
 	speed: 1,
-	lineLength: 40,
+	lineLength: 45,
 });
-
-
-window.setInterval(() => {
-	console.log(gridLines.lines);
-}, 5000);
 
 // FIXME:
 // - fix points always the same
