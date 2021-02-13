@@ -16,10 +16,10 @@ interface Config {
 }
 
 enum Direction {
-	UP,
-	DOWN,
-	RIGHT,
-	LEFT,
+	UP = 1,
+	DOWN = -1,
+	RIGHT = 2,
+	LEFT = -2,
 }
 
 interface Line {
@@ -60,14 +60,16 @@ class GridLines {
 
 		window.requestAnimationFrame(this.draw.bind(this));
 
-		const registeredCallback = Utils.throttle(this.createLines.bind(this), 400);
-		//canvas.addEventListener("mousemove", registeredCallback);
+		const registeredCallback = Utils.throttle(this.createLines.bind(this), 10);
+		canvas.addEventListener("mousemove", registeredCallback);
 
+		/*
 		// @ts-ignore FIXME: for test
 		registeredCallback({
 			offsetX: 500,
 			offsetY: 500,
 		});
+		*/
 	}
 
 	private createLines(event: MouseEvent) {
@@ -113,6 +115,8 @@ class GridLines {
 		this.squareSize = 40 * this.pxR;
 		this.numCols = Math.round(this.width / this.squareSize);
 		this.numRows = Math.round(this.height / this.squareSize);
+
+		canvas.style.backgroundColor = this.config.backgroundColor;
 	}
 
 	private drawGrid(): void {
@@ -156,12 +160,13 @@ class GridLines {
 		}
 	}
 
-	private updateLine(line: Line): Line {
-		console.log(this.isPointOnCross(line.frontPoint));
-
+	private updateLine(line: Line): void {
 		if (this.isPointOnCross(line.frontPoint)) {
 			line.points.unshift({ ...line.frontPoint });
-			line.config.currentDirection = this.pickDirection([line.config.initialDirection]);
+			line.config.currentDirection = this.pickDirection([
+				line.config.initialDirection,
+				line.config.currentDirection * -1,
+			]);
 		}
 		this.updateFrontPosition(line.frontPoint, line.config.currentDirection);
 
@@ -189,14 +194,12 @@ class GridLines {
 					nextX += point.x > previousPoint.x ? remainingLength : remainingLength * -1;
 				}
 
-				line.points.unshift({ x: nextX, y: nextY });
+				line.points.push({ x: nextX, y: nextY });
 				break;
 			}
 
 			currentLineLength += addedLength;
 		}
-
-		return line;
 	}
 
 	private drawLines() {
@@ -232,14 +235,12 @@ class GridLines {
 
 const canvas = document.querySelector("canvas");
 new GridLines(canvas, {
-	backgroundColor: "#3c3c3c",
-	gridColor: "blue",
-	linesColor: ["red", "red", "red"],
-	speed: 1,
-	lineLength: 45,
+	backgroundColor: "#181818",
+	gridColor: "#49bf5d80",
+	linesColor: ["#49bf5dcf", "#1fa936cf", "#0b5217cf", "#2dab1acf", "#3aab1acf"],
+	speed: 10,
+	lineLength: 110,
 });
 
 // FIXME:
-// - fix points always the same
 // - remove line when they are out of the canvas
-// - when choosing direction, block two instead of single direction (to avoid repeting direction)
