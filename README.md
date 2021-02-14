@@ -2,7 +2,7 @@
 
 Interactive canvas animation of lines moving on a grid next to the user cursor.
 
-<img style="width: 100%;" src="./.github/demo.gif">
+<img width="100%" src="./.github/demo.gif">
 
 
 
