@@ -60,7 +60,7 @@ class GridLines {
 
 		window.requestAnimationFrame(this.draw.bind(this));
 
-		const registeredCallback = Utils.throttle(this.createLines.bind(this), 10);
+		const registeredCallback = Utils.throttle(this.createLines.bind(this), 30);
 		canvas.addEventListener("mousemove", registeredCallback);
 
 		/*
@@ -214,7 +214,7 @@ class GridLines {
 			});
 
 			this.ctx.strokeStyle = line.config.color;
-			this.ctx.lineWidth = 3;
+			this.ctx.lineWidth = 4;
 			this.ctx.stroke();
 		});
 	}
@@ -233,14 +233,24 @@ class GridLines {
 
 /* :) */
 
-const canvas = document.querySelector("canvas");
-new GridLines(canvas, {
+const darkCoonfig = {
 	backgroundColor: "#181818",
 	gridColor: "#49bf5d80",
 	linesColor: ["#49bf5dcf", "#1fa936cf", "#0b5217cf", "#2dab1acf", "#3aab1acf"],
 	speed: 10,
 	lineLength: 110,
-});
+};
+
+const lightConfig = {
+	backgroundColor: "white",
+	gridColor: "grey",
+	linesColor: ["blue", "#FF5733", "#581845"],
+	speed: 10,
+	lineLength: 110,
+};
+
+const canvas = document.querySelector("canvas");
+new GridLines(canvas, darkCoonfig);
 
 // FIXME:
 // - remove line when they are out of the canvas
