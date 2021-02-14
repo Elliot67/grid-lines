@@ -254,3 +254,4 @@ new GridLines(canvas, darkCoonfig);
 
 // FIXME:
 // - remove line when they are out of the canvas
+// - fix pixel ratio
